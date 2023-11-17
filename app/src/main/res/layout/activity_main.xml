@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+    <com.wangyou.skeleton.map.MapSkeleton
+        android:id="@+id/mapSkeleton"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:map_skeleton_background="#f2f3f5"
+        app:map_skeleton_light_angle="20"
+        app:map_skeleton_light_color="@color/white"
+        app:map_skeleton_stroke_color="#BABABA"
+        app:map_skeleton_stroke_width="2dp"
+        app:map_skeleton_duration="3000"
+        app:map_skeleton_city_name="梁平"
+        app:map_skeleton_city_name_size="25dp"
+        android:background="@color/white"/>
+<!--    app:map_skeleton_city="Anhui"-->
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

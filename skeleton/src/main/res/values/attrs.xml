@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="mapSkeletonStyle" format="reference"/>
+    <declare-styleable name="MapSkeleton">
+        <!-- 地图加载背景 -->
+        <attr name="map_skeleton_background" format="color"/>
+        <!-- 地图加载亮条的倾斜角度 -->
+        <attr name="map_skeleton_light_angle" format="float"/>
+        <!-- 地图加载亮条中心的颜色 -->
+        <attr name="map_skeleton_light_color" format="color"/>
+        <!-- 地图边界颜色 -->
+        <attr name="map_skeleton_stroke_color" format="color"/>
+        <!-- 地图边界空 -->
+        <attr name="map_skeleton_stroke_width" format="dimension"/>
+        <!-- 地图加载动画一个周期的时间 -->
+        <attr name="map_skeleton_duration" format="integer"/>
+        <!-- 地图名，对于省级，可以直接输入名称，如Anhui，非省级需要设置assets中的文件名,如china_chongqing_liangping.txt -->
+        <attr name="map_skeleton_city_source" format="string"/>
+        <!-- 地图中文名 -->
+        <attr name="map_skeleton_city_name" format="string"/>
+        <!-- 地图名颜色 -->
+        <attr name="map_skeleton_city_name_color" format="color"/>
+        <!-- 地图名字体大小 -->
+        <attr name="map_skeleton_city_name_size" format="dimension"/>
+    </declare-styleable>
+
+</resources>

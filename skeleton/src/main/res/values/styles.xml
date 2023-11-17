@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="DefaultMapSkeleton">
+        <item name="map_skeleton_background">#f2f3f5</item>
+        <item name="map_skeleton_light_angle">30</item>
+        <item name="map_skeleton_light_color">#FFFFFFFF</item>
+        <item name="map_skeleton_stroke_color">#BABABA</item>
+        <item name="map_skeleton_stroke_width">2dp</item>
+        <item name="map_skeleton_duration">3000</item>
+         <item name="map_skeleton_city_source">china_chongqing_liangping.txt</item>
+        <item name="map_skeleton_city_name">安徽</item>
+        <item name="map_skeleton_city_name_color">#BABABA</item>
+        <item name="map_skeleton_city_name_size">25dp</item>
+    </style>
+</resources>
