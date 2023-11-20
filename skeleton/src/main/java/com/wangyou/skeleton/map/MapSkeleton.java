@@ -10,7 +10,6 @@ import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -20,7 +19,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.PathParser;
 
@@ -33,11 +31,17 @@ import org.xml.sax.SAXException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 public class MapSkeleton extends View {
+    // 动画类型：线条/透明度
+    public final static int ANIMATION_LINE = 0;
+
+    public final static int ANIMATION_ALPHA = 1;
     protected Path path;
     private RectF rectF;
 
@@ -45,8 +49,6 @@ public class MapSkeleton extends View {
 
     // 属性
     private int mBackground = Color.GRAY;
-    private float angle = 30;
-    private int lightColor = Color.WHITE;
     private int strokeColor = Color.BLUE;
     private float strokeWidth = 1;
 
@@ -57,6 +59,13 @@ public class MapSkeleton extends View {
     private String cityName = "";
     private int cityNameColor = Color.BLACK;
     private float cityNameSize = 15;
+
+    private int animationType = 0;
+
+    private float angle = 30;
+    private int lightColor = Color.WHITE;
+    private float animationMaxAlpha = 1f;
+    private float animationMinAlpha = 0.4f;
 
     private CreatePath createPath;
 
@@ -79,8 +88,6 @@ public class MapSkeleton extends View {
             return;
         }
         mBackground = typedArray.getColor(R.styleable.MapSkeleton_map_skeleton_background, Color.GRAY);
-        angle = typedArray.getFloat(R.styleable.MapSkeleton_map_skeleton_light_angle, 30);
-        lightColor = typedArray.getColor(R.styleable.MapSkeleton_map_skeleton_light_color, Color.WHITE);
         strokeColor = typedArray.getColor(R.styleable.MapSkeleton_map_skeleton_stroke_color, Color.BLUE);
         strokeWidth = typedArray.getDimensionPixelSize(R.styleable.MapSkeleton_map_skeleton_stroke_width, 1);
         duration = typedArray.getInt(R.styleable.MapSkeleton_map_skeleton_duration, 1);
@@ -88,18 +95,25 @@ public class MapSkeleton extends View {
         cityName = typedArray.getString(R.styleable.MapSkeleton_map_skeleton_city_name);
         cityNameColor = typedArray.getColor(R.styleable.MapSkeleton_map_skeleton_city_name_color, Color.BLACK);
         cityNameSize = typedArray.getDimensionPixelSize(R.styleable.MapSkeleton_map_skeleton_city_name_size, 15);
+        animationType = typedArray.getInt(R.styleable.MapSkeleton_map_skeleton_animation_type, 0);
+        angle = typedArray.getFloat(R.styleable.MapSkeleton_map_skeleton_light_angle, 30);
+        lightColor = typedArray.getColor(R.styleable.MapSkeleton_map_skeleton_light_color, Color.WHITE);
+        animationMaxAlpha = typedArray.getFloat(R.styleable.MapSkeleton_map_skeleton_alpha_max, 1f);
+        animationMinAlpha = typedArray.getFloat(R.styleable.MapSkeleton_map_skeleton_alpha_min, 0.4f);
         typedArray.recycle();
         getPath(cityResource);
-        loadAnimation();
+        startAnimation();
     }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()){
-            case MotionEvent.ACTION_DOWN: clickAnimation();break;
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                clickAnimation();
+                break;
             case MotionEvent.ACTION_UP:
-                if (clickAnimator != null){
+                if (clickAnimator != null) {
                     clickAnimator.start();
                 }
                 break;
@@ -162,7 +176,7 @@ public class MapSkeleton extends View {
         // 但是放大过程并没有如预期那样变为两个正常的字体，反而重叠在了一起
         canvas.restore();
         // 文字
-        if (!TextUtils.isEmpty(cityName)){
+        if (!TextUtils.isEmpty(cityName)) {
             Paint cityNamePaint = new Paint();
             cityNamePaint.setTextAlign(Paint.Align.LEFT);
             cityNamePaint.setTextSize(cityNameSize);
@@ -171,8 +185,8 @@ public class MapSkeleton extends View {
             Rect bounds = new Rect();
             cityNamePaint.getTextBounds(cityName, 0, cityName.length(), bounds);
             canvas.drawText(cityName,
-                    getMeasuredWidth()/2f-(bounds.width()/2f),
-                    getMeasuredHeight()/2f+(bounds.height()/2f),
+                    getMeasuredWidth() / 2f - (bounds.width() / 2f),
+                    getMeasuredHeight() / 2f + (bounds.height() / 2f),
                     cityNamePaint);
         }
 
@@ -185,18 +199,20 @@ public class MapSkeleton extends View {
         canvas.scale(scale, scale);
 
         // 再画动画亮条
-        Paint loadPaint = new Paint();
-        loadPaint.setAntiAlias(true);
-        loadPaint.setStyle(Paint.Style.FILL);
-        float angleLength = (float) (rectF.width() * Math.tan(Math.toRadians(angle)));
-        float start = -rectF.width() / 2 // 亮条渐变在0.5处，所以需要偏移
-                - angleLength // 没有角度时，亮条是垂直的，有角度后需要添加偏移
-                + (rectF.width() + 2 * angleLength) * process;
-        loadPaint.setShader(new LinearGradient(rectF.left + start, rectF.top, rectF.right + start, rectF.top + angleLength,
-                new int[]{0x00ffffff, lightColor, lightColor, 0x00ffffff},
-                new float[]{0.45f, 0.499f, 0.501f, 0.55f},
-                Shader.TileMode.CLAMP));
-        canvas.drawPath(path, loadPaint);
+        if (animationType == ANIMATION_LINE && objectAnimatorLine != null && objectAnimatorLine.isRunning()) {
+            Paint loadPaint = new Paint();
+            loadPaint.setAntiAlias(true);
+            loadPaint.setStyle(Paint.Style.FILL);
+            float angleLength = (float) (rectF.width() * Math.tan(Math.toRadians(angle)));
+            float start = -rectF.width() / 2 // 亮条渐变在0.5处，所以需要偏移
+                    - angleLength // 没有角度时，亮条是垂直的，有角度后需要添加偏移
+                    + (rectF.width() + 2 * angleLength) * process;
+            loadPaint.setShader(new LinearGradient(rectF.left + start, rectF.top, rectF.right + start, rectF.top + angleLength,
+                    new int[]{0x00ffffff, lightColor, lightColor, 0x00ffffff},
+                    new float[]{0.45f, 0.499f, 0.501f, 0.55f},
+                    Shader.TileMode.CLAMP));
+            canvas.drawPath(path, loadPaint);
+        }
 
         // 再画边界
         Paint pathPaint = new Paint();
@@ -206,10 +222,10 @@ public class MapSkeleton extends View {
         canvas.drawPath(path, pathPaint);
     }
 
-    private void getPath(String cityResource){
-        if (!TextUtils.isEmpty(cityResource) && cityResource.indexOf('.') == -1){
+    private void getPath(String cityResource) {
+        if (!TextUtils.isEmpty(cityResource) && cityResource.indexOf('.') == -1) {
             getPathForProvince(cityResource);
-        }else{
+        } else {
             getPathFromAssets(cityResource);
         }
     }
@@ -232,54 +248,75 @@ public class MapSkeleton extends View {
     }
 
     public void getPathFromAssets(String resource) {
-            if (isInEditMode()) {
-                defaultPath();
-                return;
-            }
-            createPath = () -> {
-                try {
-                    InputStream inputStream = getResources().getAssets().open(resource);
-                    byte[] bytes = new byte[inputStream.available()];
-                    inputStream.read(bytes);
-                    inputStream.close();
-                    String pathStr = new String(bytes, StandardCharsets.UTF_8);
-                    String[] pathStrArray = pathStr.split("_");
-                    float[][] pathData = new float[pathStrArray.length][2];
-                    for (int i = 0; i < pathStrArray.length; i++) {
-                        String[] positions = pathStrArray[i].split(",");
-                        pathData[i][0] = Float.parseFloat(positions[0].trim());
-                        pathData[i][1] = Float.parseFloat(positions[1].trim());
+        if (isInEditMode()) {
+            defaultPath();
+            return;
+        }
+        createPath = () -> {
+            try {
+                InputStream inputStream = getResources().getAssets().open(resource);
+                byte[] bytes = new byte[inputStream.available()];
+                inputStream.read(bytes);
+                inputStream.close();
+                String pathStr = new String(bytes, StandardCharsets.UTF_8);
+                // 区域块String
+                String[] pathArrayStr = pathStr.split("\\|");
+                List<float[][]> pathData = new ArrayList<>();
+                // 经度上面大，小面小，与view的Y轴方向是相反的
+                float max = 0;
+                float min = Float.MAX_VALUE;
+                for (int i = 0; i < pathArrayStr.length; i++) {
+                    String[] pathStrArray = pathArrayStr[i].split(";");
+                    float[][] pathDataOne = new float[pathStrArray.length][2];
+                    for (int j = 0; j < pathStrArray.length; j++) {
+                        String[] positions = pathStrArray[j].split(",");
+                        pathDataOne[j][0] = Float.parseFloat(positions[0].trim());
+                        pathDataOne[j][1] = Float.parseFloat(positions[1].trim());
+                        max = Math.max(max, pathDataOne[j][1]);
+                        min = Math.min(min, pathDataOne[j][1]);
                     }
-                    return pathData;
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    pathData.add(pathDataOne);
                 }
-                return new float[0][0];
-            };
-            getPathFromData();
+                // 画板与纬度的方向是相反的，需要反转下
+                for (int i = 0; i < pathData.size(); i++) {
+                    for (int j = 0; j < pathData.get(i).length; j++) {
+                        pathData.get(i)[j][1] = max - (pathData.get(i)[j][1] - min);
+                    }
+                }
+                return pathData;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return new ArrayList<>();
+        };
+        getPathFromData();
     }
 
-    public void getPathFromData(){
-        try{
-            float[][] pathData = createPath.getPath();
+    public void getPathFromData() {
+        try {
+            List<float[][]> pathData = createPath.getPath();
             path = new Path();
-            for (int i = 0; i < pathData.length; i++) {
-                if (i == 0) {
-                    path.moveTo(pathData[i][0], pathData[i][1]);
-                } else {
-                    path.lineTo(pathData[i][0], pathData[i][1]);
+            for (int i = 0; i < pathData.size(); i++) {
+                float[][] onePath = pathData.get(i);
+                for (int j = 0; j < onePath.length; j++) {
+                    if (j == 0) {
+                        path.moveTo(onePath[j][0], onePath[j][1]);
+                    } else {
+                        path.lineTo(onePath[j][0], onePath[j][1]);
+                    }
                 }
+                path.lineTo(onePath[onePath.length - 1][0], onePath[onePath.length - 1][1]);
             }
-            path.lineTo(pathData[pathData.length-1][0], pathData[pathData.length-1][1]);
+
             rectF = new RectF();
             path.computeBounds(rectF, true);
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             defaultPath();
         }
     }
 
-    private void defaultPath(){
+    private void defaultPath() {
         path = new Path();
         path.addCircle(50, 50, 50, Path.Direction.CW);
         rectF = new RectF();
@@ -287,27 +324,46 @@ public class MapSkeleton extends View {
     }
 
 
-    ObjectAnimator objectAnimator;
-    public void loadAnimation() {
-        if (objectAnimator != null && objectAnimator.isRunning()){
-            objectAnimator.end();
+    ObjectAnimator objectAnimatorLine;
+
+    public void loadAnimationLine() {
+        if (objectAnimatorLine != null && objectAnimatorLine.isRunning()) {
+            objectAnimatorLine.end();
         }
-        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(this, "process", 1f)
+        objectAnimatorLine = ObjectAnimator.ofFloat(this, "process", 1f)
                 .setDuration(duration);
-        objectAnimator.setRepeatMode(ObjectAnimator.RESTART);
-        objectAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        objectAnimator.start();
+        objectAnimatorLine.setRepeatMode(ObjectAnimator.RESTART);
+        objectAnimatorLine.setRepeatCount(ValueAnimator.INFINITE);
+        objectAnimatorLine.start();
+    }
+
+    ValueAnimator valueAnimatorAlpha;
+
+    private void loadAnimationAlpha() {
+        if (valueAnimatorAlpha != null && valueAnimatorAlpha.isRunning()) {
+            valueAnimatorAlpha.end();
+        }
+        valueAnimatorAlpha = ValueAnimator.ofFloat(0, 1).setDuration(duration);
+        valueAnimatorAlpha.addUpdateListener(animation -> {
+            float currentAlpha = (animationMaxAlpha+animationMinAlpha)/2f
+                    + (float) Math.cos(Math.PI*2*(float)animation.getAnimatedValue())*(animationMaxAlpha-animationMinAlpha)/2f;
+            MapSkeleton.this.setAlpha(currentAlpha);
+        });
+        valueAnimatorAlpha.setRepeatMode(ObjectAnimator.RESTART);
+        valueAnimatorAlpha.setRepeatCount(ValueAnimator.INFINITE);
+        valueAnimatorAlpha.start();
     }
 
     private ValueAnimator clickAnimator;
-    public void clickAnimation(){
+
+    private void clickAnimation() {
         ViewGroup.LayoutParams layoutParams = this.getLayoutParams();
         int width = getMeasuredWidth();
         int height = getMeasuredHeight();
         float maxScale = 0.03f;
         float round = 5f;
-        layoutParams.width = (int) (width + width*maxScale);
-        layoutParams.height = (int) (height + height*maxScale);
+        layoutParams.width = (int) (width + width * maxScale);
+        layoutParams.height = (int) (height + height * maxScale);
         setLayoutParams(layoutParams);
         requestLayout();
 
@@ -316,16 +372,32 @@ public class MapSkeleton extends View {
         }
         clickAnimator = ValueAnimator.ofFloat(0f, 1f);
         clickAnimator.addUpdateListener(animation -> {
-            float cosTop = maxScale*(1f-(float)animation.getAnimatedValue());
-            float changeScale = (float) (cosTop*Math.cos(round*Math.PI*(float)animation.getAnimatedValue()));
-            layoutParams.width = (int) (changeScale*width+width);
-            layoutParams.height = (int) (changeScale*height+height);
+            float cosTop = maxScale * (1f - (float) animation.getAnimatedValue());
+            float changeScale = (float) (cosTop * Math.cos(round * Math.PI * (float) animation.getAnimatedValue()));
+            layoutParams.width = (int) (changeScale * width + width);
+            layoutParams.height = (int) (changeScale * height + height);
             MapSkeleton.this.setLayoutParams(layoutParams);
             MapSkeleton.this.requestLayout();
         });
         clickAnimator.setDuration(500);
     }
 
+    public void startAnimation(){
+        if (animationType == ANIMATION_LINE){
+            loadAnimationLine();
+        }else{
+            loadAnimationAlpha();
+        }
+    }
+
+    public void stopAnimation(){
+        if (objectAnimatorLine != null && objectAnimatorLine.isRunning()) {
+            objectAnimatorLine.end();
+        }
+        if (valueAnimatorAlpha != null && valueAnimatorAlpha.isRunning()) {
+            valueAnimatorAlpha.end();
+        }
+    }
 
 
     public void setProcess(float process) {
@@ -343,24 +415,6 @@ public class MapSkeleton extends View {
 
     public void setmBackground(int mBackground) {
         this.mBackground = mBackground;
-        invalidate();
-    }
-
-    public float getAngle() {
-        return angle;
-    }
-
-    public void setAngle(float angle) {
-        this.angle = angle;
-        invalidate();
-    }
-
-    public int getLightColor() {
-        return lightColor;
-    }
-
-    public void setLightColor(int lightColor) {
-        this.lightColor = lightColor;
         invalidate();
     }
 
@@ -388,7 +442,7 @@ public class MapSkeleton extends View {
 
     public void setDuration(int duration) {
         this.duration = duration;
-        invalidate();
+        startAnimation();
     }
 
     public String getCityResource() {
@@ -429,6 +483,63 @@ public class MapSkeleton extends View {
         invalidate();
     }
 
+    public int getAnimationType() {
+        return animationType;
+    }
+
+    /**
+     * 修改动画类型：
+     * @param animationType ANIMATION_LINE|ANIMATION_ALPHA
+     */
+    public void setAnimationType(int animationType) {
+        this.animationType = animationType;
+        startAnimation();
+    }
+
+    public float getAngle() {
+        return angle;
+    }
+
+    /**
+     * 设置线条动画的倾斜角度
+     * @param angle 0代表竖向，90代表横向
+     */
+    public void setAngle(float angle) {
+        this.angle = angle;
+        invalidate();
+    }
+
+    public int getLightColor() {
+        return lightColor;
+    }
+
+    /**
+     * 设置线条动画的线条中心颜色
+     * @param lightColor 一般设置为White
+     */
+    public void setLightColor(int lightColor) {
+        this.lightColor = lightColor;
+        invalidate();
+    }
+
+    public float getAnimationMaxAlpha() {
+        return animationMaxAlpha;
+    }
+
+    public void setAnimationMaxAlpha(float animationMaxAlpha) {
+        this.animationMaxAlpha = animationMaxAlpha;
+        startAnimation();
+    }
+
+    public float getAnimationMinAlpha() {
+        return animationMinAlpha;
+    }
+
+    public void setAnimationMinAlpha(float animationMinAlpha) {
+        this.animationMinAlpha = animationMinAlpha;
+        startAnimation();
+    }
+
     public CreatePath getCreatePath() {
         return createPath;
     }
@@ -444,7 +555,10 @@ public class MapSkeleton extends View {
         invalidate();
     }
 
-    public interface CreatePath{
-        float[][] getPath();
+    /**
+     * 用户自定义地图的数据
+     */
+    public interface CreatePath {
+        List<float[][]> getPath();
     }
 }

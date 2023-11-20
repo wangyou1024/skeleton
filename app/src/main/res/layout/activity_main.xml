@@ -31,7 +31,7 @@
         app:map_skeleton_city_name="梁平"
         app:map_skeleton_city_name_size="25dp"
         android:background="@color/white"/>
-<!--    app:map_skeleton_city="Anhui"-->
+<!--    app:map_skeleton_city_name="Anhui"-->
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

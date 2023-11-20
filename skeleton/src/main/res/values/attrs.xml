@@ -4,10 +4,6 @@
     <declare-styleable name="MapSkeleton">
         <!-- 地图加载背景 -->
         <attr name="map_skeleton_background" format="color"/>
-        <!-- 地图加载亮条的倾斜角度 -->
-        <attr name="map_skeleton_light_angle" format="float"/>
-        <!-- 地图加载亮条中心的颜色 -->
-        <attr name="map_skeleton_light_color" format="color"/>
         <!-- 地图边界颜色 -->
         <attr name="map_skeleton_stroke_color" format="color"/>
         <!-- 地图边界空 -->
@@ -22,6 +18,19 @@
         <attr name="map_skeleton_city_name_color" format="color"/>
         <!-- 地图名字体大小 -->
         <attr name="map_skeleton_city_name_size" format="dimension"/>
+        <!-- 动画类型 -->
+        <attr name="map_skeleton_animation_type" format="integer">
+            <flag name="line" value="0"/>
+            <flag name="alpha" value="1"/>
+        </attr>
+        <!-- 线条动画：亮条的倾斜角度 -->
+        <attr name="map_skeleton_light_angle" format="float"/>
+        <!-- 线条动画：地图加载亮条中心的颜色 -->
+        <attr name="map_skeleton_light_color" format="color"/>
+        <!-- 透明度闪烁动画：最大透明度 -->
+        <attr name="map_skeleton_alpha_max" format="float"/>
+        <!-- 透明度闪烁动画：最小透明度 -->
+        <attr name="map_skeleton_alpha_min" format="float"/>
     </declare-styleable>
 
 </resources>

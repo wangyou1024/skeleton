@@ -1,11 +1,8 @@
 package com.wangyou.skeleton;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
-import android.view.View;
 
-import com.wangyou.skeleton.map.MapSkeleton;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
