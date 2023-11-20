@@ -9,15 +9,15 @@
 ```groovy
 // 添加仓库
 dependencyResolutionManagement {
-		repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-		repositories {
-			mavenCentral()
-			maven { url 'https://jitpack.io' }
-		}
-	}
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
 // 添加依赖
 dependencies {
-	        implementation 'com.github.wangyou1024:skeleton:Tag'
+    implementation 'com.github.wangyou1024:skeleton:1.0.2'
 }
 ```
 xml调用
